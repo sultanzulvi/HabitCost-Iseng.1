@@ -530,6 +530,16 @@ export default function HabitCostCalculator() {
     })
     .join(' ');
 
+  const areaPoints = [
+    `0,${chartHeight}`,
+    ...projections.map((p, i) => {
+      const x = (i / (projections.length - 1)) * chartWidth;
+      const y = chartHeight - (p.totalSpent / maxChartVal) * chartHeight;
+      return `${x},${y}`;
+    }),
+    `${chartWidth},${chartHeight}`
+  ].join(' ');
+
   // Handler Bagikan Langsung ke WhatsApp
   const handleShareWhatsApp = () => {
     const activeHabits = habits.filter((h) => h.enabled && h.amount > 0);
@@ -876,8 +886,8 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
         {/* ======================================================== */}
         {/* BAGIAN 2: RINGKASAN AKUMULASI (TABEL 2)                   */}
         {/* ======================================================== */}
-        <section className="space-y-4 sm:space-y-5">
-          <div className="flex items-start sm:items-center gap-3">
+        <section className="bg-white/95 backdrop-blur-md border-2 border-[#D5C1AE] rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-xs space-y-4 sm:space-y-6">
+          <div className="flex items-start sm:items-center gap-3 border-b border-[#EAE1D5] pb-3.5 sm:pb-4">
             <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#800020] text-white text-sm sm:text-base font-black flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
               02
             </span>
@@ -891,54 +901,48 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5">
             {/* KARTU 1 TAHUN: MERAH MARUN */}
-            <div className="bg-white/95 border-2 border-[#800020] rounded-2xl sm:rounded-3xl p-4.5 sm:p-6 shadow-xs flex flex-col justify-between hover:shadow-lg transition-shadow">
-              <div>
-                <div className="flex items-center justify-between text-xs sm:text-sm font-black text-[#800020] uppercase tracking-wider mb-2">
-                  <span>Akumulasi 1 Tahun</span>
-                  <div className="p-1.5 rounded-xl bg-[#FDF2F4] text-[#800020]">
-                    <Flame className="w-4 h-4" />
-                  </div>
+            <div className="bg-[#FAF6F0] border-2 border-[#800020] rounded-2xl p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-2.5 sm:space-y-3 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between text-xs sm:text-sm font-black text-[#800020] uppercase tracking-wider">
+                <span>Akumulasi 1 Tahun</span>
+                <div className="p-1.5 rounded-xl bg-[#FDF2F4] text-[#800020]">
+                  <Flame className="w-4 h-4" />
                 </div>
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#800020] tracking-tight font-mono leading-none truncate">
-                  {formatIDR(year1.totalSpent)}
-                </div>
-                <p className="text-xs sm:text-sm text-[#6B5A4E] mt-2.5 font-medium">Uang tunai terkumpul (12 bulan)</p>
               </div>
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#800020] tracking-tight font-mono truncate">
+                {formatIDR(year1.totalSpent)}
+              </div>
+              <p className="text-xs sm:text-sm text-[#6B5A4E] font-medium">Uang tunai terkumpul (12 bulan)</p>
             </div>
 
             {/* KARTU 3 TAHUN: COKELAT (PATOKAN UTAMA) */}
-            <div className="bg-white/95 border-2 border-[#783D19] rounded-2xl sm:rounded-3xl p-4.5 sm:p-6 shadow-md flex flex-col justify-between relative overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="absolute top-0 right-0 bg-[#783D19] text-white text-[11px] sm:text-xs font-black px-3 py-1 rounded-bl-2xl shadow-xs">
-                Patokan Utama
-              </div>
-              <div>
-                <div className="flex items-center justify-between text-xs sm:text-sm font-black text-[#783D19] uppercase tracking-wider mb-2">
-                  <span>Akumulasi 3 Tahun</span>
-                  <div className="p-1.5 rounded-xl bg-[#FAF3EB] text-[#783D19]">
-                    <PiggyBank className="w-4 h-4" />
-                  </div>
+            <div className="bg-[#FAF3EB] border-2 border-[#783D19] rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between space-y-2.5 sm:space-y-3 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between gap-2 text-xs sm:text-sm font-black text-[#783D19] uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">Akumulasi 3 Tahun</span>
+                  <span className="text-[10px] font-black bg-[#783D19] text-white px-2 py-0.5 rounded-md shrink-0">Utama</span>
                 </div>
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#783D19] tracking-tight font-mono leading-none truncate">
-                  {formatIDR(year3.totalSpent)}
+                <div className="p-1.5 rounded-xl bg-white text-[#783D19] shrink-0 shadow-xs">
+                  <PiggyBank className="w-4 h-4" />
                 </div>
-                <p className="text-xs sm:text-sm text-[#6B5A4E] mt-2.5 font-medium">Dapat dibelikan aset besar secara tunai</p>
               </div>
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#783D19] tracking-tight font-mono truncate">
+                {formatIDR(year3.totalSpent)}
+              </div>
+              <p className="text-xs sm:text-sm text-[#6B5A4E] font-medium">Dapat dibelikan aset besar secara tunai</p>
             </div>
 
             {/* KARTU 5 TAHUN: HITAM CERAH */}
-            <div className="bg-white/95 border-2 border-[#1E242B] rounded-2xl sm:rounded-3xl p-4.5 sm:p-6 shadow-xs flex flex-col justify-between hover:shadow-lg transition-shadow">
-              <div>
-                <div className="flex items-center justify-between text-xs sm:text-sm font-black text-[#1E242B] uppercase tracking-wider mb-2">
-                  <span>Akumulasi 5 Tahun</span>
-                  <div className="p-1.5 rounded-xl bg-[#F4F6F8] text-[#1E242B]">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
+            <div className="bg-[#FAF6F0] border-2 border-[#1E242B] rounded-2xl p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-2.5 sm:space-y-3 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between text-xs sm:text-sm font-black text-[#1E242B] uppercase tracking-wider">
+                <span>Akumulasi 5 Tahun</span>
+                <div className="p-1.5 rounded-xl bg-[#F4F6F8] text-[#1E242B]">
+                  <TrendingUp className="w-4 h-4" />
                 </div>
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#1E242B] tracking-tight font-mono leading-none truncate">
-                  {formatIDR(year5.totalSpent)}
-                </div>
-                <p className="text-xs sm:text-sm text-[#6B5A4E] mt-2.5 font-medium">Disiplin tabungan jangka panjang (60 bulan)</p>
               </div>
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#1E242B] tracking-tight font-mono truncate">
+                {formatIDR(year5.totalSpent)}
+              </div>
+              <p className="text-xs sm:text-sm text-[#6B5A4E] font-medium">Disiplin tabungan jangka panjang (60 bulan)</p>
             </div>
           </div>
         </section>
@@ -963,7 +967,9 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
                 03
               </span>
               <div>
-                <h2 className="text-lg sm:text-2xl font-black text-[#1E242B]">Grafik Pertumbuhan Tabungan (5 Tahun)</h2>
+                <h2 className="text-lg sm:text-2xl font-black text-[#1E242B]">
+                  Grafik Pertumbuhan Tabungan <span className="whitespace-nowrap">(5 Tahun)</span>
+                </h2>
                 <p className="text-xs sm:text-sm text-[#6B5A4E] mt-0.5">Pertumbuhan akumulasi uang kas yang berhasil kamu selamatkan</p>
               </div>
             </div>
@@ -981,6 +987,12 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               className="w-full h-36 sm:h-52 overflow-visible"
             >
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#783D19" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#783D19" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
               {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
                 const y = chartHeight * pct;
                 return (
@@ -997,15 +1009,33 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
                 );
               })}
 
+              {/* Area shading halus di bawah garis */}
+              <polygon fill="url(#chartGradient)" points={areaPoints} />
+
               {/* Garis Tabungan Kas: Cokelat */}
               <polyline
                 fill="none"
                 stroke="#783D19"
-                strokeWidth="4"
+                strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={pointsSpent}
               />
+
+              {/* Titik data tiap tahun */}
+              {projections.map((p, i) => {
+                const cx = (i / (projections.length - 1)) * chartWidth;
+                const cy = chartHeight - (p.totalSpent / maxChartVal) * chartHeight;
+                return (
+                  <circle
+                    key={p.year}
+                    cx={cx}
+                    cy={cy}
+                    r="4.5"
+                    className="fill-[#783D19] stroke-white stroke-2"
+                  />
+                );
+              })}
             </svg>
 
             <div className="flex justify-between text-xs sm:text-sm font-mono font-bold text-[#6B5A4E] mt-4 pt-3 border-t border-[#E8D8C7]">
