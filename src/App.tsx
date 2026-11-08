@@ -53,13 +53,19 @@ export interface YearProjection {
   totalSpent: number;
 }
 
-// 3 Barang Impian Default (Bebas Ditentukan & Diubah Kapan Saja oleh User)
-const DEFAULT_DREAM_ITEMS: DreamItem[] = [
+// Contoh inspirasi target barang (opsional jika user ingin contoh ide)
+const INSPIRATION_DREAM_ITEMS: DreamItem[] = [
   { id: '1', name: 'Kamera Mirrorless / Laptop Baru', price: 9_500_000 },
   { id: '2', name: 'Emas Logam Mulia 10 Gram', price: 14_500_000 },
   { id: '3', name: 'Motor Matik Baru (Beli Tunai)', price: 21_000_000 }
 ];
 
+// Target 3 Barang Impian Awal (Bersih 100% Kosong Tanpa Data Dummy)
+const INITIAL_BLANK_DREAM_ITEMS: DreamItem[] = [
+  { id: '1', name: '', price: 0 },
+  { id: '2', name: '', price: 0 },
+  { id: '3', name: '', price: 0 }
+];
 
 // Formatter Rupiah yang rapi
 const formatIDR = (val: number): string => {
@@ -70,7 +76,7 @@ const formatIDR = (val: number): string => {
   }).format(val);
 };
 
-const STORAGE_KEY = 'habitcost_data_v8';
+const STORAGE_KEY = 'habitcost_user_data_v1';
 
 // ========================================================
 // KATALOG 29 MOTIF UNIK: MATA UANG & KEGIATAN SEHARI-HARI
@@ -326,24 +332,21 @@ function AbstractBackgroundMotif() {
 // 3. KOMPONEN UTAMA
 // ==========================================
 export default function HabitCostCalculator() {
-  // Inisialisasi State dari LocalStorage
+  // Inisialisasi State dari LocalStorage (Bersih 100% Tanpa Data Dummy)
   const [habits, setHabits] = useState<HabitItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.habits) && parsed.habits.length > 0) {
+        if (Array.isArray(parsed.habits)) {
           return parsed.habits;
         }
       }
     } catch {}
-    return [
-      { id: '1', name: 'Kopi Susu Harian', amount: 25000, frequencyPerWeek: 5, enabled: true },
-      { id: '2', name: 'Ongkir & Jajan Sore', amount: 30000, frequencyPerWeek: 3, enabled: true }
-    ];
+    return [];
   });
 
-  const [activeHabitId, setActiveHabitId] = useState<string>('1');
+  const [activeHabitId, setActiveHabitId] = useState<string>('');
 
   // Mode Pengurangan (100% = stop total, 50% = kurangi separuh, 30% = kurangi sebagian)
   const [reductionPercent, setReductionPercent] = useState<number>(() => {
@@ -357,7 +360,7 @@ export default function HabitCostCalculator() {
     return 100;
   });
 
-  // 3 Target Barang Impian Pengguna (Nama & Harga Ditentukan Bebas oleh User)
+  // 3 Target Barang Impian Pengguna (Awalnya Bersih Kosong Tanpa Dummy)
   const [dreamItems, setDreamItems] = useState<DreamItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -367,26 +370,14 @@ export default function HabitCostCalculator() {
           return parsed.dreamItems;
         }
       }
-      // Migrasi jika ada data v7
-      const prevSaved = localStorage.getItem('habitcost_data_v7');
-      if (prevSaved) {
-        const parsed = JSON.parse(prevSaved);
-        if (parsed.wishlist && typeof parsed.wishlist.price === 'number') {
-          return [
-            { id: '1', name: parsed.wishlist.name || DEFAULT_DREAM_ITEMS[0].name, price: parsed.wishlist.price },
-            DEFAULT_DREAM_ITEMS[1],
-            DEFAULT_DREAM_ITEMS[2]
-          ];
-        }
-      }
     } catch {}
-    return DEFAULT_DREAM_ITEMS;
+    return INITIAL_BLANK_DREAM_ITEMS;
   });
 
   const [priceInputStrings, setPriceInputStrings] = useState<Record<string, string>>(() => ({
-    '1': dreamItems[0]?.price.toString() || '9500000',
-    '2': dreamItems[1]?.price.toString() || '14500000',
-    '3': dreamItems[2]?.price.toString() || '21000000'
+    '1': dreamItems[0]?.price > 0 ? dreamItems[0].price.toString() : '',
+    '2': dreamItems[1]?.price > 0 ? dreamItems[1].price.toString() : '',
+    '3': dreamItems[2]?.price > 0 ? dreamItems[2].price.toString() : ''
   }));
 
   const handleNameChange = (id: string, newName: string) => {
@@ -405,14 +396,20 @@ export default function HabitCostCalculator() {
     );
   };
 
-  // Reset 3 barang impian ke rekomendasi contoh awal
-  const resetDreamItems = () => {
-    setDreamItems(DEFAULT_DREAM_ITEMS);
+  // Muat contoh ide target jika user menginginkan inspirasi
+  const loadInspirationItems = () => {
+    setDreamItems(INSPIRATION_DREAM_ITEMS);
     setPriceInputStrings({
-      '1': DEFAULT_DREAM_ITEMS[0].price.toString(),
-      '2': DEFAULT_DREAM_ITEMS[1].price.toString(),
-      '3': DEFAULT_DREAM_ITEMS[2].price.toString(),
+      '1': INSPIRATION_DREAM_ITEMS[0].price.toString(),
+      '2': INSPIRATION_DREAM_ITEMS[1].price.toString(),
+      '3': INSPIRATION_DREAM_ITEMS[2].price.toString(),
     });
+  };
+
+  // Kosongkan kembali 3 barang impian
+  const clearDreamItems = () => {
+    setDreamItems(INITIAL_BLANK_DREAM_ITEMS);
+    setPriceInputStrings({ '1': '', '2': '', '3': '' });
   };
 
   // Horizon Acuan Tabungan (1, 3, 5 Tahun)
@@ -437,30 +434,25 @@ export default function HabitCostCalculator() {
 
   // Habit aktif yang sedang diedit
   const activeHabit = useMemo(() => {
-    return habits.find((h) => h.id === activeHabitId) || habits[0] || {
-      id: '1',
-      name: 'Pengeluaran Baru',
-      amount: 20000,
-      frequencyPerWeek: 5,
-      enabled: true
-    };
+    return habits.find((h) => h.id === activeHabitId) || habits[0] || null;
   }, [habits, activeHabitId]);
 
   // Update habit aktif
   const updateActiveHabit = (updates: Partial<HabitItem>) => {
+    if (!activeHabit) return;
     setHabits((prev) =>
       prev.map((h) => (h.id === activeHabit.id ? { ...h, ...updates } : h))
     );
   };
 
-  // Tambah habit baru (BEBAS TANPA PRESET)
+  // Tambah habit baru (Bersih Kosong Siap Diketik Sendiri)
   const addNewHabit = () => {
     const newId = Date.now().toString();
     const newHabit: HabitItem = {
       id: newId,
-      name: 'Pengeluaran Baru',
-      amount: 20000,
-      frequencyPerWeek: 5,
+      name: '',
+      amount: 0,
+      frequencyPerWeek: 1,
       enabled: true
     };
     setHabits((prev) => [...prev, newHabit]);
@@ -470,11 +462,12 @@ export default function HabitCostCalculator() {
   // Hapus habit
   const removeHabit = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (habits.length <= 1) return;
     const remaining = habits.filter((h) => h.id !== id);
     setHabits(remaining);
-    if (activeHabitId === id) {
+    if (activeHabitId === id && remaining.length > 0) {
       setActiveHabitId(remaining[0].id);
+    } else if (remaining.length === 0) {
+      setActiveHabitId('');
     }
   };
 
@@ -546,21 +539,22 @@ export default function HabitCostCalculator() {
 
   // Handler Bagikan Langsung ke WhatsApp
   const handleShareWhatsApp = () => {
-    const activeHabitsList = habits
-      .filter((h) => h.enabled)
-      .map((h) => `• ${h.name}: ${formatIDR(h.amount)} (${h.frequencyPerWeek}x/minggu)`)
-      .join('\n');
+    const activeHabits = habits.filter((h) => h.enabled && h.amount > 0);
+    const activeHabitsList = activeHabits.length > 0
+      ? activeHabits.map((h) => `• ${h.name || 'Pengeluaran'}: ${formatIDR(h.amount)} (${h.frequencyPerWeek}x/minggu)`).join('\n')
+      : '• Belum ada kebiasaan aktif';
 
-    const dreamItemsSummary = dreamItems
-      .map((item, idx) => {
-        const timeNeeded = calculateTimeNeeded(item.price, monthlySavedDeposit);
-        const progress = item.price > 0 ? Math.min(100, Math.round((targetSavedFund / item.price) * 100)) : 100;
-        const status = targetSavedFund >= item.price
-          ? '✅ Sudah Terbeli Tunai!'
-          : `⏳ Kurang ${formatIDR(item.price - targetSavedFund)} (dlm ~${timeNeeded})`;
-        return `${idx + 1}. *${item.name}*\n   Target Harga: ${formatIDR(item.price)}\n   Progres (${benchmarkHorizon} Thn): ${progress}% | ${status}`;
-      })
-      .join('\n\n');
+    const filledDreamItems = dreamItems.filter((i) => (i.name && i.name.trim() !== '') || i.price > 0);
+    const dreamItemsSummary = filledDreamItems.length > 0
+      ? filledDreamItems.map((item, idx) => {
+          const timeNeeded = item.price > 0 && monthlySavedDeposit > 0 ? calculateTimeNeeded(item.price, monthlySavedDeposit) : 'Belum ditentukan';
+          const progress = item.price > 0 ? Math.min(100, Math.round((targetSavedFund / item.price) * 100)) : 0;
+          const status = targetSavedFund >= item.price && item.price > 0
+            ? '✅ Sudah Terbeli Tunai!'
+            : `⏳ Kurang ${formatIDR(Math.max(0, item.price - targetSavedFund))} (dlm ~${timeNeeded})`;
+          return `${idx + 1}. *${item.name || 'Target Impian'}*\n   Target Harga: ${formatIDR(item.price)}\n   Progres (${benchmarkHorizon} Thn): ${progress}% | ${status}`;
+        }).join('\n\n')
+      : '• Belum ada target barang impian';
 
     const text = `*💰 HabitCost — Ringkasan Tabungan Kebiasaan*
 
@@ -670,142 +664,166 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
             </button>
           </div>
 
-          {/* Kartu Kebiasaan yang Sudah Ada */}
-          <div className="space-y-3">
-            <span className="block text-sm font-extrabold text-[#5A4535] uppercase tracking-wider">
-              Pilih kebiasaan untuk diedit:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-              {habits.map((h) => {
-                const isSelected = h.id === activeHabit.id;
-                return (
-                  <div
-                    key={h.id}
-                    onClick={() => setActiveHabitId(h.id)}
-                    className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'bg-[#FAF3EB] border-[#783D19] ring-2 ring-[#783D19]/40 shadow-sm'
-                        : 'bg-[#FCFAF7] border-[#D8C7B5] hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={h.enabled}
-                        onChange={(e) => toggleHabit(h.id, e as any)}
-                        title="Aktifkan / nonaktifkan kebiasaan ini"
-                        className="w-5 h-5 rounded text-[#783D19] focus:ring-[#783D19] border-[#D1C0AF] accent-[#783D19] cursor-pointer"
-                      />
-                      <div className="min-w-0">
-                        <div className={`text-base sm:text-lg font-bold truncate ${h.enabled ? 'text-[#1E242B]' : 'text-stone-400 line-through'}`}>
-                          {h.name}
+          {/* Kartu Kebiasaan yang Sudah Ada / Tampilan Kosong Awal */}
+          {habits.length === 0 ? (
+            <div className="text-center py-10 sm:py-14 px-6 bg-[#FAF6F0] rounded-3xl border-2 border-dashed border-[#D5C1AE] space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-[#FAF3EB] border-2 border-[#783D19]/30 flex items-center justify-center text-[#783D19] shadow-xs">
+                <PiggyBank className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg sm:text-xl font-black text-[#1E242B]">Belum Ada Pengeluaran yang Dicatat</h3>
+                <p className="text-sm sm:text-base text-[#6B5A4E] max-w-md mx-auto">
+                  Mulai catat kebiasaan pengeluaran rutinmu (seperti jajan kopi, rokok, ojol, atau belanja mingguan).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addNewHabit}
+                className="inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-white bg-[#783D19] hover:bg-[#612E11] px-6 py-3 rounded-2xl transition-all shadow-md cursor-pointer"
+              >
+                <Plus className="w-5 h-5" />
+                Tambah Kebiasaan Pertama
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <span className="block text-sm font-extrabold text-[#5A4535] uppercase tracking-wider">
+                  Pilih kebiasaan untuk diedit:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                  {habits.map((h) => {
+                    const isSelected = activeHabit && h.id === activeHabit.id;
+                    return (
+                      <div
+                        key={h.id}
+                        onClick={() => setActiveHabitId(h.id)}
+                        className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-[#FAF3EB] border-[#783D19] ring-2 ring-[#783D19]/40 shadow-sm'
+                            : 'bg-[#FCFAF7] border-[#D8C7B5] hover:bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={h.enabled}
+                            onChange={(e) => toggleHabit(h.id, e as any)}
+                            title="Aktifkan / nonaktifkan kebiasaan ini"
+                            className="w-5 h-5 rounded text-[#783D19] focus:ring-[#783D19] border-[#D1C0AF] accent-[#783D19] cursor-pointer"
+                          />
+                          <div className="min-w-0">
+                            <div className={`text-base sm:text-lg font-bold truncate ${h.enabled ? 'text-[#1E242B]' : 'text-stone-400 line-through'}`}>
+                              {h.name.trim() !== '' ? h.name : '(Belum diberi nama)'}
+                            </div>
+                            <div className="text-xs sm:text-sm text-[#783D19] font-mono font-bold mt-0.5">
+                              {formatIDR(h.amount)} &bull; {h.frequencyPerWeek}x/mgg
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs sm:text-sm text-[#783D19] font-mono font-bold mt-0.5">
-                          {formatIDR(h.amount)} &bull; {h.frequencyPerWeek}x/mgg
-                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => removeHabit(h.id, e)}
+                          className="p-1.5 rounded-lg text-stone-400 hover:text-[#800020] hover:bg-[#FDF2F4] transition-colors cursor-pointer"
+                          title="Hapus kebiasaan ini"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Form Detail Edit Kebiasaan Aktif */}
+              {activeHabit && (
+                <div className="bg-[#FAF6F0] border-2 border-[#DECBB8] rounded-3xl p-5 sm:p-7 space-y-5">
+                  <div className="flex items-center justify-between border-b border-[#E8D8C7] pb-3.5">
+                    <span className="text-sm sm:text-base font-bold text-[#1E242B] uppercase tracking-wide">
+                      Sedang Mengatur: <span className="text-[#783D19] font-black">{activeHabit.name.trim() !== '' ? activeHabit.name : '(Baru)'}</span>
+                    </span>
+                    <span className="text-xs sm:text-sm text-[#6B5A4E]">
+                      Ketik langsung nama &amp; nominal di bawah
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Nama Kebiasaan */}
+                    <div>
+                      <label className="block text-sm sm:text-base font-bold text-[#4E392B] uppercase tracking-wide mb-2">
+                        Nama Pengeluaran / Kebiasaan
+                      </label>
+                      <input
+                        type="text"
+                        value={activeHabit.name}
+                        onChange={(e) => updateActiveHabit({ name: e.target.value })}
+                        placeholder="Misal: Kopi Americano, Rokok, GoFood, Top Up..."
+                        className="w-full bg-white border-2 border-[#D5C1AE] rounded-2xl px-4 py-3 text-base sm:text-lg font-bold text-[#1E242B] focus:outline-none focus:ring-2 focus:ring-[#783D19]/30 focus:border-[#783D19] transition-all"
+                      />
                     </div>
 
-                    {habits.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={(e) => removeHabit(h.id, e)}
-                        className="p-1.5 rounded-lg text-stone-400 hover:text-[#800020] hover:bg-[#FDF2F4] transition-colors cursor-pointer"
-                        title="Hapus kebiasaan ini"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    {/* Nominal Ketik Sendiri */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm sm:text-base">
+                        <span className="font-bold text-[#4E392B] uppercase tracking-wide">Nominal per Transaksi</span>
+                        <span className="text-[#783D19] font-black font-mono text-base sm:text-lg">{formatIDR(activeHabit.amount)}</span>
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7D6B5C] font-black text-sm sm:text-base">
+                          Rp
+                        </div>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={activeHabit.amount === 0 ? '' : activeHabit.amount}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '');
+                            const val = raw === '' ? 0 : parseInt(raw, 10);
+                            updateActiveHabit({ amount: val });
+                          }}
+                          className="w-full bg-white border-2 border-[#D5C1AE] rounded-2xl pl-12 pr-4 py-2.5 text-base sm:text-lg font-black text-[#1E242B] focus:outline-none focus:ring-2 focus:ring-[#783D19]/30 focus:border-[#783D19] font-mono"
+                        />
+                      </div>
+
+                      <input
+                        type="range"
+                        min={0}
+                        max={Math.max(250000, activeHabit.amount)}
+                        step={2500}
+                        value={activeHabit.amount}
+                        onChange={(e) => updateActiveHabit({ amount: Number(e.target.value) })}
+                        className="w-full h-2.5 bg-[#E2D2C0] rounded-lg appearance-none cursor-pointer accent-[#783D19]"
+                      />
+                    </div>
+
+                    {/* Frekuensi Mingguan */}
+                    <div className="md:col-span-2 space-y-2 pt-3 border-t border-[#E8D8C7]">
+                      <div className="flex items-center justify-between text-sm sm:text-base">
+                        <span className="font-bold text-[#4E392B] uppercase tracking-wide">
+                          Frekuensi per Minggu: <strong className="text-[#1E242B] font-mono font-black">{activeHabit.frequencyPerWeek}x / minggu</strong>
+                        </span>
+                        <span className="text-[#6B5A4E] font-mono text-sm sm:text-base font-bold">
+                          Total: {formatIDR(activeHabit.amount * activeHabit.frequencyPerWeek)} / minggu
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={14}
+                        step={1}
+                        value={activeHabit.frequencyPerWeek}
+                        onChange={(e) => updateActiveHabit({ frequencyPerWeek: Number(e.target.value) })}
+                        className="w-full h-2.5 bg-[#E2D2C0] rounded-lg appearance-none cursor-pointer accent-[#800020]"
+                      />
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Form Detail Edit Kebiasaan Aktif */}
-          <div className="bg-[#FAF6F0] border-2 border-[#DECBB8] rounded-3xl p-5 sm:p-7 space-y-5">
-            <div className="flex items-center justify-between border-b border-[#E8D8C7] pb-3.5">
-              <span className="text-sm sm:text-base font-bold text-[#1E242B] uppercase tracking-wide">
-                Sedang Mengatur: <span className="text-[#783D19] font-black">{activeHabit.name}</span>
-              </span>
-              <span className="text-xs sm:text-sm text-[#6B5A4E]">
-                Ketik langsung nama &amp; nominal di bawah
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Nama Kebiasaan */}
-              <div>
-                <label className="block text-sm sm:text-base font-bold text-[#4E392B] uppercase tracking-wide mb-2">
-                  Nama Pengeluaran / Kebiasaan
-                </label>
-                <input
-                  type="text"
-                  value={activeHabit.name}
-                  onChange={(e) => updateActiveHabit({ name: e.target.value })}
-                  placeholder="Misal: Kopi Americano, Rokok, GoFood, Top Up..."
-                  className="w-full bg-white border-2 border-[#D5C1AE] rounded-2xl px-4 py-3 text-base sm:text-lg font-bold text-[#1E242B] focus:outline-none focus:ring-2 focus:ring-[#783D19]/30 focus:border-[#783D19] transition-all"
-                />
-              </div>
-
-              {/* Nominal Ketik Sendiri */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm sm:text-base">
-                  <span className="font-bold text-[#4E392B] uppercase tracking-wide">Nominal per Transaksi</span>
-                  <span className="text-[#783D19] font-black font-mono text-base sm:text-lg">{formatIDR(activeHabit.amount)}</span>
                 </div>
-
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7D6B5C] font-black text-sm sm:text-base">
-                    Rp
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={activeHabit.amount === 0 ? '' : activeHabit.amount}
-                    placeholder="0"
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, '');
-                      const val = raw === '' ? 0 : parseInt(raw, 10);
-                      updateActiveHabit({ amount: val });
-                    }}
-                    className="w-full bg-white border-2 border-[#D5C1AE] rounded-2xl pl-12 pr-4 py-2.5 text-base sm:text-lg font-black text-[#1E242B] focus:outline-none focus:ring-2 focus:ring-[#783D19]/30 focus:border-[#783D19] font-mono"
-                  />
-                </div>
-
-                <input
-                  type="range"
-                  min={2500}
-                  max={Math.max(250000, activeHabit.amount)}
-                  step={2500}
-                  value={activeHabit.amount}
-                  onChange={(e) => updateActiveHabit({ amount: Number(e.target.value) })}
-                  className="w-full h-2.5 bg-[#E2D2C0] rounded-lg appearance-none cursor-pointer accent-[#783D19]"
-                />
-              </div>
-
-              {/* Frekuensi Mingguan */}
-              <div className="md:col-span-2 space-y-2 pt-3 border-t border-[#E8D8C7]">
-                <div className="flex items-center justify-between text-sm sm:text-base">
-                  <span className="font-bold text-[#4E392B] uppercase tracking-wide">
-                    Frekuensi per Minggu: <strong className="text-[#1E242B] font-mono font-black">{activeHabit.frequencyPerWeek}x / minggu</strong>
-                  </span>
-                  <span className="text-[#6B5A4E] font-mono text-sm sm:text-base font-bold">
-                    Total: {formatIDR(activeHabit.amount * activeHabit.frequencyPerWeek)} / minggu
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={14}
-                  step={1}
-                  value={activeHabit.frequencyPerWeek}
-                  onChange={(e) => updateActiveHabit({ frequencyPerWeek: Number(e.target.value) })}
-                  className="w-full h-2.5 bg-[#E2D2C0] rounded-lg appearance-none cursor-pointer accent-[#800020]"
-                />
-              </div>
-            </div>
-          </div>
+              )}
+            </>
+          )}
 
           {/* OPSI PENGURANGAN: HITAM CERAH, MERAH MARUN, COKELAT */}
           <div className="pt-2">
@@ -1043,15 +1061,23 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
               </div>
             </div>
 
-            {/* Pemilih Periode Acuan (1, 3, 5 Tahun) & Reset Contoh */}
+            {/* Pemilih Periode Acuan (1, 3, 5 Tahun) & Inspirasi Ide */}
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
               <button
                 type="button"
-                onClick={resetDreamItems}
-                className="text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold text-[#6B5A4E] hover:text-[#800020] hover:bg-[#FDF2F4] bg-[#FAF6F0] border-2 border-[#DECBB8] transition-all cursor-pointer"
-                title="Kembalikan nama & harga ke contoh awal"
+                onClick={loadInspirationItems}
+                className="text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold text-[#783D19] hover:bg-[#FAF3EB] bg-[#FAF6F0] border-2 border-[#DECBB8] transition-all cursor-pointer"
+                title="Isi dengan contoh barang impian populer"
               >
-                Reset Contoh
+                💡 Contoh Ide
+              </button>
+              <button
+                type="button"
+                onClick={clearDreamItems}
+                className="text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold text-[#6B5A4E] hover:text-[#800020] hover:bg-[#FDF2F4] bg-[#FAF6F0] border-2 border-[#DECBB8] transition-all cursor-pointer"
+                title="Kosongkan semua target"
+              >
+                Kosongkan
               </button>
 
               <div className="flex items-center gap-1.5 bg-[#FAF6F0] p-1.5 rounded-2xl border-2 border-[#DECBB8]">
@@ -1079,11 +1105,13 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
             {dreamItems.map((item, index) => {
               const isAffordable = targetSavedFund >= item.price && item.price > 0;
               const surplus = isAffordable ? targetSavedFund - item.price : 0;
-              const deficit = !isAffordable ? item.price - targetSavedFund : 0;
+              const deficit = !isAffordable && item.price > 0 ? item.price - targetSavedFund : 0;
               const progressPercent = item.price > 0
                 ? Math.min(100, Math.round((targetSavedFund / item.price) * 100))
-                : 100;
-              const timeNeeded = calculateTimeNeeded(item.price, monthlySavedDeposit);
+                : 0;
+              const timeNeeded = item.price > 0 && monthlySavedDeposit > 0
+                ? calculateTimeNeeded(item.price, monthlySavedDeposit)
+                : (item.price === 0 ? 'Belum ditentukan' : 'Perlu tabungan aktif');
 
               const theme = [
                 {
@@ -1129,7 +1157,11 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
                     <span className={`px-3.5 py-1.5 rounded-xl text-white text-xs sm:text-sm font-black uppercase tracking-wider ${theme.badgeBg}`}>
                       Target Impian #{index + 1}
                     </span>
-                    {isAffordable ? (
+                    {item.price <= 0 ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FAF6F0] border border-[#DECBB8] text-[#6B5A4E] text-xs sm:text-sm font-bold">
+                        Belum Diisi
+                      </span>
+                    ) : isAffordable ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FAF3EB] border border-[#DEC5B3] text-[#783D19] text-xs sm:text-sm font-black">
                         <Check className="w-4 h-4 text-[#783D19]" />
                         Tercapai Tunai!
@@ -1151,7 +1183,7 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
                         type="text"
                         value={item.name}
                         onChange={(e) => handleNameChange(item.id, e.target.value)}
-                        placeholder={`Target Impian #${index + 1}...`}
+                        placeholder={`Ketik barang impian #${index + 1}...`}
                         className="w-full bg-[#FAF6F0] border-2 border-[#D5C1AE] rounded-2xl px-4 py-2.5 text-base sm:text-lg font-black text-[#1E242B] focus:outline-none focus:ring-2 focus:ring-[#783D19]/30 focus:border-[#783D19] transition-all"
                       />
                     </div>
@@ -1172,7 +1204,7 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
                         <input
                           type="text"
                           inputMode="numeric"
-                          value={priceInputStrings[item.id] !== undefined ? priceInputStrings[item.id] : item.price.toString()}
+                          value={priceInputStrings[item.id] !== undefined ? priceInputStrings[item.id] : (item.price > 0 ? item.price.toString() : '')}
                           onChange={(e) => handlePriceChange(item.id, e.target.value)}
                           placeholder="0"
                           className="w-full bg-[#FAF6F0] border-2 border-[#D5C1AE] rounded-2xl pl-12 pr-4 py-2.5 text-base sm:text-lg font-black text-[#1E242B] font-mono focus:outline-none focus:ring-2 focus:ring-[#783D19]/30 focus:border-[#783D19] transition-all"
@@ -1213,7 +1245,11 @@ _Dihitung otomatis via HabitCost Simulator_ 🚀`;
 
                       <div className="flex justify-between items-center text-xs sm:text-sm">
                         <span className="text-[#6B5A4E] font-medium">Status ({benchmarkHorizon} Thn):</span>
-                        {isAffordable ? (
+                        {item.price <= 0 ? (
+                          <span className="font-mono font-medium text-[#6B5A4E]">
+                            Masukkan target harga
+                          </span>
+                        ) : isAffordable ? (
                           <span className="font-mono font-extrabold text-[#783D19]">
                             Sisa Kas: +{formatIDR(surplus)}
                           </span>
